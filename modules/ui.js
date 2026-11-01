@@ -1,3 +1,4 @@
+import { canFollowMessages } from './reading.js';
 import { renderFormattedText } from './format.js';
 import { createAttachmentElement } from './attachments.js';
 
@@ -214,10 +215,11 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
   if (imageBase64) {
     imgElement = document.createElement('img');
     imgElement.src = imageBase64;
+    imgElement.dataset.caption = text || '';
     imgElement.alt = text ? 'Изображение: ' + text : 'Изображение';
     imgElement.addEventListener('click', async () => {
       const { openImageViewer } = await import('./viewer.js');
-      openImageViewer(imageBase64);
+      openImageViewer(imageBase64, messageId);
     });
     messageEl.appendChild(imgElement);
   }
@@ -267,7 +269,7 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
     messagesDiv.insertBefore(messageEl, messagesDiv.firstChild);
   } else {
     messagesDiv.appendChild(messageEl);
-    if (wasNearBottom) messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    if (wasNearBottom && canFollowMessages()) messagesDiv.scrollTop = messagesDiv.scrollHeight;
   }
 
   if (imgElement) {

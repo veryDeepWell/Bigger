@@ -413,6 +413,14 @@
         <input id="searchQuery" type="search" placeholder="Текст, имя или имя файла…" autocomplete="off">
         <button id="searchSubmitBtn" class="btn-primary" type="submit">Искать</button>
       </form>
+      <div class="search-filters" role="group" aria-label="Фильтры поиска">
+        <label>Автор (точное имя)<input id="searchAuthor" form="searchForm" type="text" placeholder="Любой автор"></label>
+        <label>С даты<input id="searchFrom" form="searchForm" type="date"></label>
+        <label>По дату<input id="searchTo" form="searchForm" type="date"></label>
+        <label>Вложение<select id="searchType" form="searchForm"><option value="">Любой тип</option><option value="image">Изображения</option><option value="file">Все файлы</option><option value="pdf">PDF</option><option value="document">DOC / DOCX</option><option value="spreadsheet">XLS / XLSX / CSV</option><option value="text">Текстовые файлы</option></select></label>
+        <label><input id="searchCode" form="searchForm" type="checkbox"> Только с блоками кода</label>
+        <button id="searchWeek" type="button">Последние 7 дней</button><button id="searchReset" type="button">Сбросить фильтры</button>
+      </div>
       <p id="searchStatus" class="attachment-preview-note" aria-live="polite">Поиск идёт по всей истории, страница за страницей.</p>
       <div id="searchResults" class="chat-search-results"></div>
       <div class="modal-actions"><button id="closeSearchBtn" class="btn-secondary" type="button">Закрыть</button></div>

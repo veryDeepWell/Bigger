@@ -559,8 +559,10 @@ searchModal?.addEventListener('click', event => { if (event.target === searchMod
 searchForm?.addEventListener('submit', async event => {
   event.preventDefault();
   const query = searchQuery.value.trim();
-  if (!query) {
-    searchStatus.textContent = 'Введи хотя бы один символ.';
+  const filters = { author: document.getElementById('searchAuthor').value.trim(), from: document.getElementById('searchFrom').value, to: document.getElementById('searchTo').value, type: document.getElementById('searchType').value, code: document.getElementById('searchCode').checked };
+  if (filters.from && filters.to && filters.from > filters.to) { searchStatus.textContent = 'Начальная дата должна быть не позже конечной.'; return; }
+  if (!query && !Object.values(filters).some(Boolean)) {
+    searchStatus.textContent = 'Введи текст или выбери фильтр.';
     return;
   }
   const submit = document.getElementById('searchSubmitBtn');
@@ -570,6 +572,7 @@ searchForm?.addEventListener('submit', async event => {
   try {
     const results = await searchMessages(query, {
       maxResults: 50,
+      filters,
       onProgress: ({ scanned, found }) => {
         searchStatus.textContent = `Проверено сообщений: ${scanned}. Найдено: ${found}.`;
       }
@@ -594,7 +597,7 @@ searchForm?.addEventListener('submit', async event => {
       header.append(name, time);
       const snippet = document.createElement('span');
       snippet.className = 'chat-search-result-text';
-      snippet.textContent = result.text || (result.attachmentName ? `📎 ${result.attachmentName}` : result.image ? '📷 Изображение' : '(без текста)');
+      snippet.textContent = [result.text, result.attachmentName ? `📎 ${result.attachmentName}` : result.image ? '📷 Изображение' : ''].filter(Boolean).join(' · ') || '(без текста)';
       item.append(header, snippet);
       item.addEventListener('click', async () => {
         searchModal.classList.add('hidden');
@@ -763,3 +766,9 @@ initCommandAutocomplete(messageInput, {
   isReplyActive: () => Boolean(replyTarget || editingTarget),
 });
 initFormatToolbar(messageInput);
+document.getElementById('searchWeek').onclick = () => {
+  const today = new Date(), from = new Date(); from.setDate(from.getDate() - 6);
+  const dateValue = d => [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+  document.getElementById('searchFrom').value = dateValue(from); document.getElementById('searchTo').value = dateValue(today);
+};
+document.getElementById('searchReset').onclick = () => { for (const id of ['searchAuthor', 'searchFrom', 'searchTo', 'searchType']) document.getElementById(id).value = ''; document.getElementById('searchCode').checked = false; };

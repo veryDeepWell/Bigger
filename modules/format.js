@@ -1,3 +1,4 @@
+import { createCodeBlock } from './codeBlocks.js';
 /**
  * Разметка сообщений (безопасно, через DOM-узлы, без innerHTML).
  *
@@ -385,25 +386,8 @@ function renderBlocks(blocks) {
 
   for (const block of blocks) {
     if (block.type === 'code') {
-      const pre = document.createElement('pre');
-      pre.className = 'fmt-code-block';
-      const code = document.createElement('code');
-      const languageAliases = {
-        web: 'html', js: 'javascript', ts: 'typescript', csharp: 'csharp',
-        'c#': 'csharp', cpp: 'cpp', 'c++': 'cpp', py: 'python', shell: 'bash',
-        sh: 'bash', ps: 'powershell', txt: 'plaintext', text: 'plaintext', md: 'markdown',
-      };
-      const normalizedLanguage = languageAliases[block.language] || block.language;
-      if (normalizedLanguage) {
-        // language-plaintext отключает автоопределение для обычного текста.
-        code.className = `language-${normalizedLanguage}`;
-      }
-      code.textContent = block.code;
-      pre.appendChild(code);
-      frag.appendChild(pre);
-      if (globalThis.hljs?.highlightElement) {
-        try { globalThis.hljs.highlightElement(code); } catch (error) { console.warn('Не удалось подсветить код:', error); }
-      }
+      const aliases = { js: 'javascript', ts: 'typescript', py: 'python', sh: 'bash', shell: 'bash', ps: 'powershell', txt: 'plaintext', text: 'plaintext', md: 'markdown', web: 'html' };
+      frag.appendChild(createCodeBlock(block.code, aliases[block.language] || block.language));
     } else if (block.type === 'p') {
       const p = document.createElement('span');
       p.className = 'fmt-p';

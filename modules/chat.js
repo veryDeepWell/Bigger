@@ -1,3 +1,5 @@
+import { matchesSearch } from './searchFilters.js';
+import { startReading, restoreReading, stopReading } from './reading.js';
 import { db, messagesRef } from './firebase.js';
 import {
   push, onChildAdded, onChildChanged, onChildRemoved, serverTimestamp,
@@ -96,6 +98,7 @@ function notifyLocalHater(data) {
 export function listenForMessages(user) {
   const listenerGeneration = ++sessionGeneration;
   activeUser = user;
+  startReading(user);
   oldestLoadedKey = null;
   hasOlder = true;
   loadingOlder = false;
@@ -197,6 +200,8 @@ export function listenForMessages(user) {
       pendingChanged.clear();
       initializing = false;
       initialHistoryLoaded = true;
+      await restoreReading(loadOlderMessages);
+      if (disposed) return;
 
       const status = document.getElementById('status-indicator');
       status.textContent = 'Подключено';
@@ -234,6 +239,7 @@ export function listenForMessages(user) {
 
   return () => {
     disposed = true;
+    stopReading();
     unsubAdded();
     unsubChanged();
     unsubRemoved();
@@ -287,9 +293,9 @@ export async function loadOlderMessages() {
 }
 
 /** Search messages in bounded pages so a search does not read the whole tree at once. */
-export async function searchMessages(searchText, { maxResults = 50, onProgress } = {}) {
+export async function searchMessages(searchText, { maxResults = 50, onProgress, filters = {} } = {}) {
   const needle = String(searchText || '').trim().toLocaleLowerCase();
-  if (!needle) return [];
+  if (!needle && !Object.values(filters).some(Boolean)) return [];
   const chunkSize = 40;
   const results = [];
   let cursor = null;
@@ -310,8 +316,7 @@ export async function searchMessages(searchText, { maxResults = 50, onProgress }
       const data = row.val();
       if (!data) continue;
       scanned++;
-      const searchable = [data.name, data.text, data.attachment?.name].filter(Boolean).join(' ').toLocaleLowerCase();
-      if (searchable.includes(needle)) {
+      if (matchesSearch(data, needle, filters)) {
         results.push({ id: row.key, name: data.name || 'Неизвестно', text: data.text || '', timestamp: data.timestamp || 0, image: !!data.image, attachmentName: data.attachment?.name || '' });
         if (results.length >= maxResults) break;
       }
