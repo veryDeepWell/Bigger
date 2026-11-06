@@ -2078,210 +2078,6 @@ html[data-chat-background="plain"] #messages {
 
 
 
-/* ========== Хейтерша: отдельная жилая сцена ========== */
-.hater-house {
-  position: fixed;
-  left: 0;
-  bottom: 0;
-  width: min(440px, 34vw);
-  height: min(420px, 48vh);
-  min-width: 310px;
-  min-height: 300px;
-  z-index: 3;
-  pointer-events: none;
-  user-select: none;
-  isolation: isolate;
-  overflow: visible;
-  filter: drop-shadow(0 12px 32px rgba(0, 0, 0, .36));
-}
-.hater-house.hidden { display: none !important; }
-body.theme-hater .hater-house { display: block; }
-body:not(.theme-hater) .hater-house { display: none !important; }
-
-/* Дом — полноценный слой сцены, а не маленькая иконка рядом с чатом. */
-.hater-room-scene {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  border-top-right-radius: 28px;
-  mask-image: none;
-  -webkit-mask-image: none;
-}
-.hater-room-art {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.hater-room-art .hater-pose { display: none; }
-.hater-house[data-activity="phone"] .pose-phone,
-.hater-house[data-activity="snack"] .pose-phone,
-.hater-house[data-activity="reading"] .pose-phone,
-.hater-house[data-activity="waking"] .pose-phone { display: inline; }
-.hater-house[data-activity="cooking"] .pose-cooking { display: inline; }
-.hater-house[data-activity="sleeping"] .pose-sleeping { display: inline; }
-.hater-room-art .hater-interactive { pointer-events: visiblePainted; cursor: pointer; }
-.hater-room-art .snack-prop, .hater-room-art .reading-prop { display: none; }
-.hater-house[data-activity="snack"] .phone-prop,
-.hater-house[data-activity="reading"] .phone-prop { display: none; }
-.hater-house[data-activity="snack"] .snack-prop { display: inline; }
-.hater-house[data-activity="reading"] .reading-prop { display: inline; }
-
-/* Свет за окном меняется вместе с локальным временем пользователя. */
-.hater-house[data-time="morning"] .window-sky { fill: #b78c9c; }
-.hater-house[data-time="day"] .window-sky { fill: #718ba4; }
-.hater-house[data-time="evening"] .window-sky,
-.hater-house[data-time="late"] .window-sky { fill: #80576f; }
-.hater-house[data-time="night"] .window-sky { fill: url(#windowNight); }
-.hater-house[data-time="day"] .window-moon,
-.hater-house[data-time="morning"] .window-moon { display: none; }
-.hater-house[data-time="night"] .window-stars { opacity: 1; }
-.hater-house[data-time="day"] .window-stars,
-.hater-house[data-time="morning"] .window-stars { opacity: .12; }
-.window-stars { animation: haterStars 3.8s ease-in-out infinite alternate; }
-@keyframes haterStars { from { opacity: .48; } to { opacity: 1; } }
-.sleep-z { transform-box: fill-box; transform-origin: center; animation: haterSleepZ 2.4s ease-in-out infinite; }
-.sleep-z-2 { animation-delay: .8s; }
-@keyframes haterSleepZ { 0%, 100% { opacity: 0; transform: translateY(5px); } 45% { opacity: .9; } 80% { opacity: 0; transform: translateY(-10px); } }
-.hater-house[data-activity="phone"] .pose-phone,
-.hater-house[data-activity="snack"] .pose-phone,
-.hater-house[data-activity="reading"] .pose-phone { animation: haterIdleSway 5.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 70% 55%; }
-.hater-house[data-activity="cooking"] .pose-cooking { animation: haterCookMove 2.8s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
-@keyframes haterIdleSway { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-2px) rotate(.35deg); } }
-@keyframes haterCookMove { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-1px) rotate(-.5deg); } }
-.hater-house[data-mood="angry"] .pose-phone { filter: saturate(1.15); }
-.hater-house[data-mood="sleepy"] .pose-sleeping { filter: brightness(.95); }
-
-/* Реплики накапливаются стопкой: новая появляется у персонажа снизу,
-   предыдущие мягко поднимаются выше и не затирают друг друга. */
-.hater-dialogue-stack {
-  position: absolute;
-  z-index: 5;
-  left: 30%;
-  bottom: 60%;
-  width: min(270px, 70vw);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  pointer-events: none;
-}
-.hater-bubble-item {
-  position: relative;
-  max-width: 100%;
-  width: fit-content;
-  padding: 9px 12px;
-  border: 1px solid color-mix(in srgb, var(--accent) 34%, var(--border-color));
-  border-radius: 13px 13px 13px 4px;
-  background: color-mix(in srgb, var(--panel-bg) 93%, #211523);
-  color: var(--text-main);
-  font-size: .76rem;
-  line-height: 1.38;
-  overflow-wrap: anywhere;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, .34), 0 0 18px color-mix(in srgb, var(--accent) 10%, transparent);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  opacity: 0;
-  transform: translateY(13px) scale(.98);
-  transition: opacity .24s ease, transform .28s cubic-bezier(.2,.8,.2,1);
-}
-.hater-bubble-item::after {
-  content: '';
-  position: absolute;
-  left: 13px;
-  bottom: -6px;
-  width: 10px;
-  height: 10px;
-  background: inherit;
-  border-right: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border-color));
-  border-bottom: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border-color));
-  transform: rotate(45deg);
-}
-.hater-bubble-item.is-visible { opacity: 1; transform: translateY(0) scale(1); }
-.hater-bubble-item.is-leaving { opacity: 0; transform: translateY(-12px) scale(.97); }
-.hater-bubble-item:nth-last-child(1) { border-color: color-mix(in srgb, var(--accent) 52%, var(--border-color)); }
-
-.hater-statusbar {
-  position: absolute;
-  left: 18%;
-  bottom: 10px;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  max-width: 77%;
-  padding: 7px 11px;
-  border: 1px solid rgba(218, 162, 190, .2);
-  border-radius: 999px;
-  color: #f1d9e8;
-  background: rgba(23, 17, 29, .78);
-  box-shadow: 0 4px 18px rgba(0,0,0,.3);
-  font-size: .68rem;
-  backdrop-filter: blur(9px);
-}
-.hater-live-dot { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: #91d49a; box-shadow: 0 0 8px rgba(145,212,154,.6); }
-.hater-name { color: #f0a6c8; font-weight: 800; white-space: nowrap; }
-.hater-status { color: #d1b9cb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* На широком экране дом занимает собственную колонку и не перекрывает чат. */
-@media (min-width: 901px) {
-  body.theme-hater #chatScreen {
-    width: calc(100% - min(460px, 35vw) - 26px);
-    max-width: 1320px;
-    margin: 12px 14px 12px min(460px, 35vw);
-  }
-}
-@media (min-width: 901px) and (max-width: 1150px) {
-  .hater-house { width: 300px; min-width: 0; height: 310px; }
-  body.theme-hater #chatScreen { width: calc(100% - 315px); margin-left: 300px; }
-  .hater-dialogue-stack { left: 25%; width: 230px; }
-}
-
-/* На телефоне сцена остаётся компактным уголком, а сообщения получают нижний отступ. */
-@media (max-width: 900px) {
-  .hater-house { width: 190px; height: 154px; min-width: 0; min-height: 0; bottom: 68px; left: 0; opacity: .96; }
-  .hater-room-scene { mask-image: none; -webkit-mask-image: none; }
-  .hater-dialogue-stack { left: 4%; bottom: 49%; width: min(200px, 70vw); gap: 4px; }
-  .hater-bubble-item { padding: 6px 8px; font-size: .65rem; line-height: 1.3; border-radius: 9px 9px 9px 3px; }
-  .hater-statusbar { display: none; }
-  body.theme-hater #messages { padding-bottom: 170px; }
-}
-@media (max-width: 480px) {
-  .hater-house { width: 150px; height: 124px; bottom: 70px; }
-  .hater-dialogue-stack { width: min(180px, 68vw); bottom: 50%; }
-  .hater-bubble-item { font-size: .6rem; padding: 5px 7px; }
-  body.theme-hater #messages { padding-bottom: 140px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .hater-room-art *, .hater-bubble-item { animation: none !important; transition-duration: .01ms !important; }
-}
-
-.theme-params-host {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-color);
-}
-.theme-params-host.hidden { display: none; }
-.theme-params-title {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  font-weight: 700;
-}
-.theme-param-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: var(--text-main);
-  cursor: pointer;
-}
-.graph-formulas-block.hidden { display: none !important; }
-
-
 /* Локальные возможности чтения, просмотра и поиска. */
 .unread-divider { flex: 0 0 auto; align-self: stretch; text-align: center; color: var(--accent); border-top: 1px solid var(--accent); padding: 8px; margin: 12px 0; font-size: .85rem; }
 .unread-counter { align-self: center; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-main); border-radius: 20px; padding: 7px 16px; cursor: pointer; }
@@ -2388,4 +2184,235 @@ body:not(.theme-hater) .hater-house { display: none !important; }
   .viewer-prev { left: max(10px, env(safe-area-inset-left)); }
   .viewer-next { right: max(10px, env(safe-area-inset-right)); }
   .site-footer { display: none; }
+}
+
+/* Комната и персонаж находятся в своих слоях, отдельно от вёрстки чата. */
+.hater-house { display: contents; }
+.hater-room-scene, .hater-stage {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+.hater-room-scene {
+  z-index: 0;
+  overflow: hidden;
+  background: #2b1824 url('./assets/yuka-room.png') center / 100% 100% no-repeat;
+  filter: brightness(.72);
+  transition: filter 5s ease;
+}
+.hater-house[data-time="morning"] .hater-room-scene { filter: brightness(.98) sepia(.15); }
+.hater-house[data-time="day"] .hater-room-scene { filter: brightness(1.08) saturate(.8); }
+.hater-house[data-time="evening"] .hater-room-scene { filter: brightness(.9); }
+.hater-house[data-time="late"] .hater-room-scene { filter: brightness(.78); }
+.hater-room-scene > div { position: absolute; }
+.hater-window-light {
+  inset: 15% 33% 50% 40%;
+  background: radial-gradient(ellipse, #b0caff 0%, transparent 75%);
+  mix-blend-mode: screen;
+  opacity: .14;
+  animation: yuka-window 13s ease-in-out infinite alternate;
+}
+.hater-rain {
+  inset: 17% 35% 54% 42%;
+  opacity: .27;
+  background: repeating-linear-gradient(97deg, transparent 0 16px, #c2d7ff 17px, transparent 18px 26px);
+  mask-image: repeating-linear-gradient(0deg, transparent 0 32px, #000 50px 67px, transparent 91px);
+  mask-size: 100% 182px;
+  animation: yuka-rain 1.25s linear infinite;
+}
+.hater-tv-light {
+  left: 11.1%; top: 49.8%; width: 4.9%; height: 6.6%;
+  border-radius: 18%;
+  background: #140e1a;
+  opacity: .88;
+}
+.hater-kitchen-light {
+  left: 21%; top: 35%; width: 32%; height: 28%;
+  background: radial-gradient(ellipse, #ffba66, transparent 70%);
+  mix-blend-mode: screen;
+  opacity: .12;
+  transition: opacity 1s ease;
+}
+.hater-house:is([data-activity="tv"], [data-activity="gaming"]) .hater-tv-light {
+  background: radial-gradient(ellipse, #a0c2ff 15%, #bca0ff 42%, transparent 73%);
+  mix-blend-mode: screen;
+  animation: yuka-tv 2.4s ease-in-out infinite alternate;
+}
+.hater-house:is([data-activity="cooking"], [data-activity="snack"]) .hater-kitchen-light { opacity: .48; }
+@keyframes yuka-window { to { opacity: .36; } }
+@keyframes yuka-rain { to { mask-position: 0 182px; } }
+@keyframes yuka-tv { 0%, 40%, 78% { opacity: .28; } 25%, 66%, 100% { opacity: .62; } }
+
+body.theme-hater #chatScreen { background: color-mix(in srgb, var(--bg-color) 77%, transparent); }
+body.theme-hater #messages { background-color: color-mix(in srgb, var(--chat-bg-color) 70%, transparent); }
+body.theme-hater .chat-header,
+body.theme-hater .input-area { background-color: color-mix(in srgb, var(--panel-bg) 95%, transparent); }
+
+.hater-stage {
+  z-index: 3;
+  overflow: clip;
+}
+body:has(.modal-overlay:not(.hidden), .image-viewer:not(.hidden)) .hater-stage { visibility: hidden; }
+.hater-resident {
+  --sprite-height: clamp(95px, 24vh, 230px);
+  position: absolute;
+  left: var(--yuka-x, 11%);
+  top: var(--yuka-y, 81%);
+  width: calc(var(--sprite-height) * .66);
+  height: var(--sprite-height);
+  transform: translate(-50%, -100%);
+  transition: left var(--yuka-travel, 0ms) linear, top var(--yuka-travel, 0ms) ease-in-out;
+}
+.hater-interactive {
+  position: absolute;
+  inset: 0 14%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 24px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.hater-interactive:focus-visible { outline: 2px solid #f0b5d4; outline-offset: 3px; }
+.hater-actor {
+  position: absolute;
+  inset: 0 -20%;
+  display: block;
+  background: url('./assets/yuka-actor.png') center bottom / contain no-repeat;
+  transform-origin: 50% 95%;
+  filter: drop-shadow(3px 6px 6px #180b18aa);
+  animation: yuka-breathe 4.6s ease-in-out infinite;
+}
+.hater-house[data-facing="left"] .hater-interactive { scale: -1 1; }
+.hater-house[data-zone="chair"][data-walking="false"] .hater-interactive { scale: none; }
+.hater-house[data-zone="chair"][data-walking="false"] .hater-actor {
+  background-image: url('./assets/yuka-seated.png');
+  scale: .82;
+}
+.hater-house[data-walking="true"] .hater-actor {
+  left: 50%;
+  right: auto;
+  width: calc(var(--sprite-height) * .75);
+  translate: -50% 0;
+  background: url('./assets/yuka-walk.png') 0 0 / 400% 100% no-repeat;
+  animation: yuka-steps .7s steps(1, end) infinite;
+}
+.hater-house[data-zone="kitchen"][data-walking="false"] .hater-resident { opacity: .6; }
+.hater-house[data-activity="cleaning"][data-walking="false"] .hater-actor { animation: yuka-sweep 1.5s ease-in-out infinite alternate; }
+.hater-house:is([data-activity="cooking"], [data-activity="snack"])[data-walking="false"] .hater-actor {
+  animation: yuka-sweep 2.3s ease-in-out infinite alternate;
+}
+.hater-house[data-activity="sleeping"][data-walking="false"] .hater-interactive {
+  inset: 56% 0 0;
+  scale: none;
+}
+.hater-house[data-activity="sleeping"][data-walking="false"] .hater-actor {
+  background-image: url('./assets/yuka-sleep.png');
+  inset-inline: -18%;
+  animation-duration: 6.5s;
+}
+.hater-house[data-mood="angry"][data-walking="false"] .hater-actor { animation: yuka-stamp .28s ease-in-out 3 alternate; }
+@keyframes yuka-breathe { 50% { transform: scaleY(.986); } }
+@keyframes yuka-steps {
+  0% { background-position-x: 0%; }
+  25% { background-position-x: 33.333%; }
+  50% { background-position-x: 66.667%; }
+  75%, 100% { background-position-x: 100%; }
+}
+@keyframes yuka-sweep { to { transform: translateX(9%) rotate(-6deg); } }
+@keyframes yuka-stamp { to { transform: translateY(-3px) rotate(-3deg); } }
+
+.hater-prop, .hater-gesture {
+  position: absolute;
+  left: 61%;
+  bottom: 40%;
+  font-size: clamp(14px, 2.2vw, 32px);
+  filter: drop-shadow(0 3px 6px #130a1a);
+}
+.hater-prop { animation: yuka-prop 2.5s ease-in-out infinite alternate; }
+.hater-house[data-walking="true"] .hater-prop { visibility: hidden; }
+.hater-house[data-activity="smoking"][data-walking="false"] .hater-prop::after {
+  content: '';
+  position: absolute;
+  inset: -18px 4px 16px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #c8b8d4b0, transparent 72%);
+  animation: yuka-smoke 2s ease-out infinite;
+}
+.hater-house[data-activity="smoking"] .hater-prop { bottom: 72%; }
+.hater-house[data-activity="sleeping"] .hater-prop { left: 68%; bottom: 35%; }
+@keyframes yuka-prop { to { transform: translateY(-3px) rotate(6deg); } }
+@keyframes yuka-smoke { from { opacity: .65; } to { opacity: 0; transform: translate(8px, -25px) scale(1.6); } }
+.hater-gesture { display: none; font-size: clamp(26px, 4vw, 48px); bottom: 58%; }
+.hater-house[data-gesture="true"] .hater-gesture { display: block; animation: yuka-prop .5s ease-in-out 4 alternate; }
+.hater-house[data-gesture="true"][data-zone="chair"][data-walking="false"] .hater-actor {
+  background-image: url('./assets/yuka-gesture.png');
+}
+.hater-house[data-gesture="true"][data-zone="chair"][data-walking="false"] .hater-gesture { display: none; }
+
+.hater-dialogue-stack {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(220px, 54vw);
+  padding: 9px 12px;
+  border: 1px solid #9d6687;
+  border-radius: 12px;
+  background: #211322f2;
+  color: #ffedf7;
+  font: 500 .8rem/1.4 system-ui, sans-serif;
+  box-shadow: 0 5px 18px #160b18a0;
+  overflow-wrap: anywhere;
+}
+.hater-dialogue-stack:empty { display: none; }
+.hater-house[data-zone="chair"] .hater-dialogue-stack,
+.hater-house[data-destination="chair"] .hater-dialogue-stack { left: 25%; transform: none; }
+.hater-house[data-zone="bed"] .hater-dialogue-stack,
+.hater-house[data-zone="balcony"] .hater-dialogue-stack,
+.hater-house[data-destination="bed"] .hater-dialogue-stack,
+.hater-house[data-destination="balcony"] .hater-dialogue-stack { left: auto; right: 25%; transform: none; }
+.hater-house[data-mood="angry"] .hater-dialogue-stack { border-color: #ee7797; }
+.hater-statusbar {
+  position: absolute;
+  left: max(8px, env(safe-area-inset-left));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  max-width: 92vw;
+  padding: 5px 9px;
+  border: 1px solid #704763;
+  border-radius: 20px;
+  background: #211322eb;
+  color: #f4d1e4;
+  font-size: .72rem;
+}
+.hater-statusbar strong { margin-right: 4px; color: #ff9bc4; }
+
+.hater-chat-message {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  max-width: min(480px, 92%);
+  padding: 9px 13px;
+  border: 1px solid #79435e;
+  border-radius: 13px 13px 13px 3px;
+  background: #302030;
+  color: #f7e7f3;
+  overflow-wrap: anywhere;
+}
+.hater-chat-message strong { color: #ff9bc4; font-size: .82rem; }
+.hater-chat-message small { margin-left: 7px; color: #d2b4cc; font-size: .65rem; }
+.hater-chat-message > div { margin-top: 4px; white-space: pre-wrap; }
+
+@media (max-width: 1100px) {
+  .hater-resident { --sprite-height: clamp(80px, 18vh, 155px); }
+}
+@media (max-width: 768px) {
+  .hater-room-scene { background-size: cover; }
+  .hater-resident { --sprite-height: clamp(58px, 13vh, 105px); }
+  .hater-statusbar { bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .hater-dialogue-stack { font-size: .75rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hater-room-scene, .hater-room-scene > div, .hater-room-scene > div::after,
+  .hater-resident, .hater-resident * { animation: none !important; transition: none !important; }
 }

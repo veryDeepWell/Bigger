@@ -72,9 +72,6 @@ function showChat() {
   const user = localStorage.getItem('chat_user_name');
   if (user && !unsubscribeMessages) {
     unsubscribeMessages = listenForMessages(user);
-    hater?.onLogin?.();
-  } else {
-    hater?.touchActivity?.();
   }
 }
 
@@ -145,7 +142,6 @@ async function sendCurrentMessage() {
     if (!text && !editingTarget.image) return;
     const targetId = editingTarget.id;
     const saved = await updateTextMessage(targetId, text);
-    if (saved) hater?.onEditSaved?.();
     if (saved && editingTarget?.id === targetId) {
       const pendingDraft = messageInput.value.trim() === text ? '' : messageInput.value;
       clearEdit({ clearInput: false });
@@ -323,7 +319,6 @@ function clearReply() {
 }
 
 document.addEventListener('chat:reply', (event) => {
-  hater?.onReplyStarted?.(event.detail);
   const draft = editingTarget ? draftBeforeEdit : messageInput.value;
   if (editingTarget) clearEdit({ clearInput: false, restoreDraft: true });
   else clearEdit({ clearInput: false });
@@ -339,7 +334,6 @@ document.addEventListener('chat:reply', (event) => {
 document.getElementById('cancelReplyBtn').addEventListener('click', clearReply);
 
 document.addEventListener('chat:edit', (event) => {
-  hater?.onEditStarted?.(event.detail);
   const draft = editingTarget ? draftBeforeEdit : messageInput.value;
   if (editingTarget) clearEdit({ clearInput: false, restoreDraft: true });
   draftBeforeEdit = draft ?? '';
@@ -568,7 +562,6 @@ const searchResults = document.getElementById('searchResults');
 const searchStatus = document.getElementById('searchStatus');
 
 document.getElementById('searchChatBtn')?.addEventListener('click', () => {
-  hater?.onSearch?.('');
   searchModal.classList.remove('hidden');
   setTimeout(() => searchQuery.focus(), 20);
 });
@@ -596,7 +589,6 @@ searchForm?.addEventListener('submit', async event => {
       }
     });
     searchResults.replaceChildren();
-    hater?.onSearch?.(query, { found: results.length });
     if (!results.length) {
       searchStatus.textContent = `По запросу «${query}» ничего не найдено.`;
       return;

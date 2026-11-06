@@ -1,8 +1,5 @@
-/**
- * Хейтерша Юки — локальный NPC комнаты.
- * Полностью автономна: только таймеры, время браузера и DOM-события чата.
- * Firebase и формат сообщений не используются и не изменяются.
- */
+import { createHaterTemper } from './haterTemper.js';
+import { canFollowMessages } from './reading.js';
 
 const BANKS = {
   greet: [
@@ -791,9 +788,9 @@ function textCategory(text) {
   if (/^\/(?:roll|dice|кубик|d)(?:\s|$)/i.test(t)) return 'roll';
   if (/^\/(?:offline|away|afk|оффлайн)(?:\s|$)/i.test(t)) return 'command';
   if (t.startsWith('/')) return 'command';
-  if (/^(привет|здравствуй|хай|ку|доброе утро|добрый вечер|добрый день)\b/i.test(t)) return 'greeting';
-  if (/^(спасибо|спс|благодарю|thx|thanks)\b/i.test(t)) return 'thanks';
-  if (/^(извини|извините|сорри|прости|виноват)\b/i.test(t)) return 'apology';
+  if (/^(привет|здравствуй|хай|ку|доброе утро|добрый вечер|добрый день)(?=$|[^\p{L}])/iu.test(t)) return 'greeting';
+  if (/^(спасибо|спс|благодарю|thx|thanks)(?=$|[^\p{L}])/iu.test(t)) return 'thanks';
+  if (/^(извини|извините|сорри|прости|виноват)(?=$|[^\p{L}])/iu.test(t)) return 'apology';
   if (features.includes('codeBlock') || features.includes('inlineCode')) return features.length > 1 ? 'formatCombo' : 'code';
   if (features.length > 1) return 'formatCombo';
   if (features.length === 1) return 'formatted';
@@ -807,519 +804,314 @@ function textCategory(text) {
   return 'generic';
 }
 
+
+const ACTIVITIES = {
+  phone: { zone: 'chair', label: 'листает телефон', prop: '📱', lines: BANKS.idle },
+  reading: { zone: 'chair', label: 'читает в кресле', prop: '📖', lines: [
+    'Закладка всё ещё на той же странице. Надо начать запирать дверь.',
+    'В этой книге у героини хотя бы есть лестница наружу.',
+    'Так. Ещё одну главу. Здесь ведь можно попросить о такой роскоши?',
+  ] },
+  tv: { zone: 'chair', label: 'смотрит телевизор', prop: '📺', lines: [
+    'Двадцать каналов, и везде кто-то куда-то едет. Хвастаются.',
+    'Пульт опять в кресле. Здесь даже вещи далеко не уходят.',
+    'О, моя любимая передача. Та, где люди молчат.',
+  ] },
+  gaming: { zone: 'chair', label: 'играет в плойку', prop: '🎮', lines: [
+    'Сейчас пройду босса. У него хотя бы понятный набор атак.',
+    'В игре за пределами дома целая карта. Непривычно.',
+    'Ещё один сейв. Хотела бы я и этот день откатить.',
+  ] },
+  music: { zone: 'chair', label: 'слушает музыку', prop: '🎧', lines: [
+    'На этой стороне наушников пока тихо.',
+    'Этот альбом я купила ещё до того, как обустроила дом.',
+    'Поставлю на повтор. Всё остальное тут и так на повторе.',
+  ] },
+  cooking: { zone: 'kitchen', label: 'готовит на кухне', prop: '🍳', lines: BANKS.cook },
+  cleaning: { zone: 'floor', label: 'подметает пол', prop: '🧹', lines: [
+    'Откуда столько пыли, если никто отсюда не выходит?',
+    'Снова под креслом крошки. На этот раз точно мои.',
+    'Уберусь, пока у меня ещё есть силы что-то тут менять.',
+  ] },
+  snack: { zone: 'kitchen', label: 'делает чай', prop: '☕', lines: [
+    'Чай на одну. Как всегда.',
+    'Я хотела поставить стол на двоих. Вот куда в итоге поставила кресло.',
+    'От кружки тепло. Остальное сегодня оставим как есть.',
+  ] },
+  sleeping: { zone: 'bed', label: 'спит', prop: '💤', lines: [] },
+  smoking: { zone: 'balcony', label: 'вышла покурить', prop: '🚬', lines: [
+    'Балкон всё ещё считается выходом. Хотя бы технически.',
+    'Здесь слышно дождь. Вот бы ещё минуту только его.',
+    'Сигарета короче вечера. Уже что-то.',
+  ] },
+};
+
+const POSITIONS = {
+  chair: [9, 80], kitchen: [52, 73], floor: [35, 90], bed: [90, 67], balcony: [83, 69],
+};
+const DAY_PLAN = ['phone', 'reading', 'cooking', 'cleaning', 'tv', 'gaming', 'music', 'snack'];
+const PRIVATE_THOUGHTS = [
+  'Я сама выбрала этот цвет стен. Думала, будет куда возвращаться.',
+  'Когда обставляла комнату, всё искала кресло, из которого не захочется вставать. Нашла.',
+  'Удивительно, сколько дождя помещается в одном окне.',
+  'У каждого дома есть звук. У моего — чужая клавиатура.',
+  'Раньше я ждала, когда смогу остаться дома одна. Теперь жду хоть чего-нибудь ещё.',
+  'Переставлю лампу завтра. Если завтра здесь вообще чем-то отличается.',
+  'Хочется выйти за хлебом и потеряться на полчаса. Такая идиотская мечта.',
+  'Я ведь помню, зачем тут каждую полку повесила. Хоть это у меня пока есть.',
+];
+const CHAT_LINES = [
+  'Идите траву потрогайте.',
+  'Вы там ещё помните, как улица выглядит?',
+  'У кого-нибудь за окном сейчас тоже дождь?',
+  'Скажите честно, вы иногда тоже забываете, зачем сюда зашли?',
+  'Я сегодня впервые прошла босса. Всё, можете дальше делать вид, что не заметили.',
+  'Я тут чай сделала. Вам, понятное дело, не предлагаю.',
+  'Если вдруг знаете, как перестать считать дни, пишите. Только по делу.',
+];
+
+function messageKind(text) {
+  if (textCategory(text) === 'apology') return 'apology';
+  if (/(^|[^\p{L}])(юка|юки|хейтерша|yuka)(?=$|[^\p{L}])/iu.test(text)) {
+    if (/заткнись|дура|ненавижу|иди нах/i.test(text)) return 'hostile';
+    if (/спасибо|держись|как ты|помочь|обнимаю/i.test(text)) return 'kind';
+    return 'addressed';
+  }
+  if ((textCategory(text) === 'caps' && text.length >= 8) || /[!?]{3,}/.test(text)) return 'loud';
+  return 'ordinary';
+}
+
 export function initHater() {
   const root = document.getElementById('haterRoot');
-  if (!root) return {
-    say() {}, onUserText() {}, onUserImage() {}, onUserFile() {}, onCommand() {},
-    onSearch() {}, onReplyStarted() {}, onEditStarted() {}, onIncomingMessage() {},
-    onAway() {}, onLogin() {}, touchActivity() {},
-  };
-
-  const stack = root.querySelector('.hater-dialogue-stack');
+  if (!root) return null;
+  const resident = root.querySelector('.hater-resident');
   const status = root.querySelector('.hater-status');
-  const MAX_BUBBLES = 5;
-  const recentLines = new Map();
-  const userBurst = [];
-  const incomingBurst = [];
-  const recentTexts = [];
+  const speech = root.querySelector('.hater-dialogue-stack');
+  const prop = root.querySelector('.hater-prop');
+  const button = root.querySelector('.hater-interactive');
+  const messages = document.getElementById('messages');
+  const chat = document.getElementById('chatScreen');
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  const recent = new Map();
+  let temper = createHaterTemper();
+  let enabled = false;
   let activity = 'phone';
-  let hiddenByTheme = true;
-  let routineTimer = 0;
-  let wakeTimer = 0;
-  let moodTimer = 0;
-  let lastInteractionAt = Date.now();
-  const rateStates = { outgoing: { tier: 0, at: 0 }, incoming: { tier: 0, at: 0 } };
-  let interruptionUntil = 0;
-  let bubbleSequence = 0;
+  let destination = '';
+  let position = POSITIONS.chair;
+  let routineTimer, walkTimer, speechTimer, gestureTimer;
+  let lastPost = 0;
+  let nextPost = 0;
+  let lastSmallTalk = 0;
 
-  function setMood(kind = 'neutral', duration = 6500) {
-    root.dataset.mood = kind;
-    clearTimeout(moodTimer);
-    moodTimer = setTimeout(() => {
-      if (root.dataset.mood === kind) root.dataset.mood = 'neutral';
-    }, duration);
+  const lineFrom = (bank, key = bank) => choose(Array.isArray(bank) ? bank : BANKS[bank], key, recent);
+
+  function say(line, mood = 'neutral') {
+    if (!enabled || !line) return;
+    clearTimeout(speechTimer);
+    speech.textContent = line;
+    root.dataset.mood = mood;
+    speechTimer = setTimeout(() => {
+      speech.textContent = '';
+      root.dataset.mood = 'neutral';
+    }, mood === 'angry' ? 11_000 : 8_000);
   }
 
-  function setTimeOfDay() {
-    const { period } = getClockState();
-    root.dataset.time = period;
-  }
-
-  function currentStatus() {
-    const labels = {
-      phone: 'сидит в кресле, листает телефон',
-      cooking: 'на кухне · готовит',
-      sleeping: 'спит · не будить',
-      waking: 'проснулась от уведомления',
-      snack: 'пьёт чай в кресле',
-      reading: 'читает с телефона в кресле',
-    };
-    return labels[activity] || labels.phone;
-  }
-
-  function setActivity(next, { silent = true } = {}) {
-    if (!next) return;
-    const changed = activity !== next;
-    activity = next;
-    root.dataset.activity = next;
-    root.dataset.time = getClockState().period;
-    if (status) status.textContent = currentStatus();
-    if (changed && !silent && Math.random() < 0.72) {
-      const ambient = {
-        phone: ['Наконец-то можно просто полистать ленту.', 'Я в кресле. Это не значит, что я дежурю.', 'Проверяю телефон. Свой, не твой.'],
-        cooking: ['Так, пора что-нибудь приготовить. И желательно без комментариев из чата.', 'На кухню. Хоть там задачи понятные.', 'Поставила воду. Сейчас будет что-то съедобное.'],
-        snack: ['Чай и что-нибудь сладкое. План лучше большинства.', 'Перерыв на перекус. Не отвлекать, это священно.', 'Пошла за чаем. У меня тут бытовые дела.'],
-        reading: ['Почитаю с телефона. Книга хотя бы не присылает уведомления.', 'В кресле тихо. Надеюсь, это продлится.', 'Читаю. Если что, я не отвечаю за внезапную тишину.'],
-      };
-      const lines = ambient[next];
-      if (lines) say(choose(lines, `routine:${next}`, recentLines), { mood: 'neutral', hold: 8500 });
-    }
-  }
-
-  function say(line, { mood = 'annoyed', hold = 10500 } = {}) {
-    if (!stack || !line || hiddenByTheme) return;
-    const previousPositions = Array.from(stack.children)
-      .filter(node => !node.classList.contains('is-leaving'))
-      .map(node => ({ node, top: node.getBoundingClientRect().top }));
-
-    // Убираем только самый старый элемент, если очередь заполнена.
-    // Остальные остаются в DOM и плавно сдвигаются выше при вставке новой реплики.
-    while (bubbles.length >= MAX_BUBBLES) removeBubble(bubbles[0], true);
-
-    const item = document.createElement('div');
-    item.className = 'hater-bubble-item';
-    item.dataset.sequence = String(++bubbleSequence);
-    item.textContent = String(line);
-    stack.appendChild(item);
-    const record = { node: item, timer: 0 };
-    record.timer = setTimeout(() => removeBubble(record), hold);
-    bubbles.push(record);
-
-    requestAnimationFrame(() => {
-      previousPositions.forEach(({ node, top }) => {
-        if (!node.isConnected || typeof node.animate !== 'function') return;
-        const shift = top - node.getBoundingClientRect().top;
-        if (Math.abs(shift) > 1) {
-          node.animate(
-            [{ transform: `translateY(${shift}px)` }, { transform: 'translateY(0)' }],
-            { duration: 300, easing: 'cubic-bezier(.2,.8,.2,1)' }
-          );
-        }
-      });
-      item.classList.add('is-visible');
-    });
-    setMood(mood, Math.min(hold, 9000));
-  }
-
-  const bubbles = [];
-
-  function removeBubble(record, immediate = false) {
-    const index = bubbles.indexOf(record);
-    if (index >= 0) bubbles.splice(index, 1);
-    clearTimeout(record.timer);
-    if (!record.node?.isConnected) return;
-    if (immediate) { record.node.remove(); return; }
-    record.node.classList.add('is-leaving');
-    setTimeout(() => record.node.remove(), 260);
-  }
-
-  function speak(poolName, { mood = 'annoyed', hold = 10500, prefix = '' } = {}) {
-    const pool = Array.isArray(poolName) ? poolName : BANKS[poolName] || BANKS.generic;
-    say(prefix + choose(pool, Array.isArray(poolName) ? 'custom' : poolName, recentLines), { mood, hold });
-  }
-
-  function inSleepHours() { return getClockState().sleeping; }
-  function isSleeping() { return activity === 'sleeping' || inSleepHours(); }
-
-  function noteInteraction() { lastInteractionAt = Date.now(); }
-
-  function addBurst(list, windowMs = 20_000) {
+  function post(line, urgent = false) {
     const now = Date.now();
-    list.push(now);
-    while (list.length && now - list[0] > windowMs) list.shift();
-    return list.length;
+    if (!enabled || document.hidden || chat.classList.contains('hidden')
+        || document.body.classList.contains('away-mode') || now - lastPost < (urgent ? 20_000 : 95_000)) return;
+    lastPost = now;
+    const follow = canFollowMessages() && messages.scrollHeight - messages.scrollTop - messages.clientHeight < 100;
+    const row = document.createElement('div');
+    row.className = 'hater-chat-message';
+    const sender = document.createElement('strong');
+    sender.textContent = 'Юка';
+    const label = document.createElement('small');
+    label.textContent = 'локально';
+    const text = document.createElement('div');
+    text.textContent = line;
+    row.append(sender, label, text);
+    messages.append(row);
+    const posts = messages.querySelectorAll('.hater-chat-message');
+    if (posts.length > 16) posts[0].remove();
+    if (follow) messages.scrollTop = messages.scrollHeight;
   }
 
-  function repeatedText(text) {
-    const normalized = String(text || '').trim().toLocaleLowerCase().replace(/\s+/g, ' ');
-    if (!normalized) return false;
-    const repeated = recentTexts.some(item => item.value === normalized && Date.now() - item.time < 60_000);
-    recentTexts.push({ value: normalized, time: Date.now() });
-    while (recentTexts.length > 12) recentTexts.shift();
-    return repeated;
+  function schedule(delay) {
+    clearTimeout(routineTimer);
+    routineTimer = setTimeout(planActivity, delay);
   }
 
-  function wakeFromSleep(source = 'message') {
-    clearTimeout(wakeTimer);
-    setActivity('waking');
-    speak('sleepWake', { mood: 'dead', hold: 11000 });
-    wakeTimer = setTimeout(() => {
-      if (inSleepHours()) setActivity('sleeping');
-      else setActivity('phone');
-    }, source === 'incoming' ? 15000 : 12000);
-  }
+  function setActivity(next, initial = false) {
+    const details = ACTIVITIES[next];
+    if (!details || !enabled) return;
+    clearTimeout(routineTimer);
+    clearTimeout(walkTimer);
+    const target = POSITIONS[details.zone];
+    const distance = Math.hypot(target[0] - position[0], target[1] - position[1]);
+    const duration = initial || motion.matches || !distance ? 0 : Math.round(450 + distance * 31);
+    destination = next;
+    root.dataset.destination = details.zone;
+    root.dataset.time = getClockState().period;
+    resident.style.setProperty('--yuka-travel', duration + 'ms');
+    if (position[0] !== target[0]) root.dataset.facing = target[0] < position[0] ? 'left' : 'right';
+    resident.style.setProperty('--yuka-x', target[0] + '%');
+    resident.style.setProperty('--yuka-y', target[1] + '%');
+    position = target;
+    root.dataset.walking = String(Boolean(duration));
+    if (duration) status.textContent = 'идёт по комнате';
 
-  function interruptWithLifeContext() {
-    if (isSleeping()) {
-      wakeFromSleep('message');
-      return true;
-    }
-    if (activity === 'cooking') {
-      speak('cook', { mood: 'annoyed', hold: 10000 });
-      interruptionUntil = Date.now() + 6500;
-      return true;
-    }
-    if (activity === 'reading' || activity === 'snack') {
-      const pools = activity === 'reading'
-        ? ['Я читаю. Книга хотя бы не ожидает моментального ответа.', 'Я была на интересной странице. Теперь интересная страница — это ты? Нет.', 'Закладка потеряла смысл. Спасибо за уведомление.']
-        : ['Я с чаем. Он хотя бы не ждёт немедленного ответа.', 'Перерыв на перекус. Перерыв, понимаешь? Не совещание.', 'Я только сделала глоток. Даже чай не успевает остыть.'];
-      speak(pools, { mood: 'annoyed', hold: 9000 });
-      return true;
-    }
-    return false;
+    const arrive = () => {
+      activity = next;
+      destination = '';
+      delete root.dataset.destination;
+      root.dataset.walking = 'false';
+      root.dataset.activity = next;
+      root.dataset.zone = details.zone;
+      status.textContent = details.label;
+      prop.textContent = details.prop;
+      if (temper.settleInto(next)) {
+        const line = lineFrom([
+          'ПОЗАКРЫВАЛИ ПИЗДАКИ, ЗАЕБАЛИ ШУМЕТЬ.',
+          'Я только села. Хоть пять минут можно, блядь, без этого?',
+          'Всё. До конца трека оба молчите. Я серьёзно.',
+          'Я терпела всю вашу переписку. Теперь моя очередь побыть здесь.',
+        ], 'delayed-snap');
+        say(line, 'angry');
+        post(line, true);
+      } else if (!initial && details.lines.length && Math.random() < .57 && !speech.textContent) {
+        say(lineFrom(details.lines, next));
+      }
+      const delay = { sleeping: 60_000, smoking: 42_000, reading: 42_000, cleaning: 25_000 }[next] || 28_000;
+      schedule(delay + Math.random() * 25_000);
+    };
+    if (duration) walkTimer = setTimeout(arrive, duration);
+    else arrive();
   }
 
   function planActivity() {
-    clearTimeout(routineTimer);
-    routineTimer = 0;
-    if (hiddenByTheme) return;
-    setTimeOfDay();
+    if (!enabled) return;
+    if (document.hidden) { schedule(15_000); return; }
     const clock = getClockState();
-    if (clock.sleeping) {
-      if (activity !== 'waking') setActivity('sleeping');
-      routineTimer = setTimeout(planActivity, 60_000);
+    root.dataset.time = clock.period;
+    if (clock.sleeping && activity !== 'smoking') {
+      if (activity !== 'sleeping') setActivity('sleeping');
+      else schedule(60_000);
       return;
     }
-    if (Date.now() < interruptionUntil || activity === 'waking') {
-      routineTimer = setTimeout(planActivity, 20_000);
+    if (Date.now() >= nextPost && activity !== 'smoking') {
+      post(lineFrom(CHAT_LINES, 'local-chat'));
+      nextPost = Date.now() + 100_000 + Math.random() * 140_000;
+    }
+    if (!speech.textContent && Math.random() < .45 && activity !== 'sleeping') {
+      say(lineFrom(PRIVATE_THOUGHTS, 'private-thoughts'));
+    }
+    const choices = temper.hasUnspentNoise()
+      ? ['gaming', 'music'].filter(item => item !== activity)
+      : DAY_PLAN.filter(item => item !== activity);
+    if (activity === 'smoking' && clock.sleeping) setActivity('sleeping');
+    else setActivity(pick(choices));
+  }
+
+  function react(kind, bank) {
+    if (!enabled || document.hidden) return;
+    const current = destination === 'smoking' ? 'smoking' : activity;
+    const result = temper.hear(kind, current);
+    if (result === 'gesture') {
+      root.dataset.gesture = 'true';
+      clearTimeout(gestureTimer);
+      gestureTimer = setTimeout(() => { delete root.dataset.gesture; }, 4200);
       return;
     }
-    const hour = new Date().getHours();
-    const isMealWindow = (hour >= 7 && hour < 9) || (hour >= 12 && hour < 14) || (hour >= 18 && hour < 20);
-    let next = 'phone';
-    const roll = Math.random();
-    if (isMealWindow && roll < 0.52) next = 'cooking';
-    else if (!isMealWindow && roll < 0.09) next = 'snack';
-    else if (!isMealWindow && roll < 0.18) next = 'reading';
-    // В остальное время она действительно в основном сидит в кресле с телефоном.
-    setActivity(next, { silent: Math.random() > 0.82 });
-    if (Date.now() - lastInteractionAt > 90_000 && Math.random() < 0.28) {
-      speak('idle', { mood: 'neutral', hold: 11500 });
+    if (result === 'retreat') {
+      say(lineFrom([
+        'Я просила один раз. Теперь сами варитесь в этом шуме. Я курить.',
+        'Да ебись оно всё. На балконе хоть ветер не отвечает.',
+        'Книгу закрыла. Плойку выключила. Нахуй, я выйду покурю.',
+        'Нет, продолжайте. Меня здесь ближайшую минуту нет.',
+      ], 'retreat'), 'angry');
+      setActivity('smoking');
+      return;
     }
-    routineTimer = setTimeout(planActivity, 55_000 + Math.random() * 80_000);
+    if (result === 'warn') {
+      const warnings = {
+        reading: ['Я читаю. Потише, пожалуйста. Я второй раз на одной строчке.', 'Дайте дочитать страницу. Серьёзно, мне нужна тишина.'],
+        gaming: ['Я на боссе. Заткнитесь хоть до сохранения.', 'Слышите геймпад? Это я пытаюсь играть. Убавьте шум.'],
+        music: ['Даже через наушники слышу. Можно помолчать один трек?', 'Я музыку включила, а не радио с вашими комментариями.'],
+        sleeping: ['Вы серьёзно? Я сплю. Дайте хотя бы полчаса.', 'Тише, блядь. Свет уже выключен.'],
+      };
+      say(lineFrom(warnings[current] || BANKS.rateMedium, 'warn:' + current), 'annoyed');
+      return;
+    }
+    if (result === 'reply' && kind === 'poke') {
+      say(lineFrom(['Руку убери. Я не звонок у двери.', 'Ещё раз ткнёшь — пошлю нахуй.', 'Что ты тыкаешь? Словами попробуй.'], 'poke'), 'annoyed');
+    } else if (result === 'reply' && kind === 'kind') {
+      say(lineFrom(['Спасибо. И никому не говори, что я это сказала.', 'Нормально. Сейчас уже чуть лучше.', 'Ты правда спросил? Ладно. Посиди рядом, если хочешь.'], 'kind'));
+    } else if (result === 'reply' || (current !== 'smoking' && current !== 'sleeping'
+        && !speech.textContent && Date.now() - lastSmallTalk > 20_000 && Math.random() < .18)) {
+      lastSmallTalk = Date.now();
+      say(lineFrom(bank));
+    }
   }
 
-  function rateLevel(list, direction = 'outgoing') {
-    const count = addBurst(list);
-    const state = rateStates[direction] || rateStates.outgoing;
-    const now = Date.now();
-    if (count < 4) {
-      state.tier = 0;
-      return '';
-    }
-    // Порог можно повысить немедленно: серия из 7 сообщений должна звучать
-    // заметно раздражительнее, даже если средний уровень сработал секунду назад.
-    if (count >= 7 && (state.tier < 2 || now - state.at > 5000)) {
-      state.tier = 2;
-      state.at = now;
-      return 'high';
-    }
-    if (count >= 4 && (state.tier < 1 || now - state.at > 7000)) {
-      state.tier = 1;
-      state.at = now;
-      return 'medium';
-    }
-    return '';
-  }
-
-  function speakRate(level) {
-    if (level === 'high') speak('rateHigh', { mood: 'angry', hold: 12500 });
-    else if (level === 'medium') speak('rateMedium', { mood: 'annoyed', hold: 10500 });
+  function fileBank(file) {
+    const ext = String(file?.name || '').split('.').pop().toLowerCase();
+    if (ext === 'pdf') return 'pdf';
+    if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) return 'office';
+    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'spreadsheet';
+    if (['zip', 'rar', '7z', 'gz', 'tar'].includes(ext)) return 'archive';
+    if (['js', 'ts', 'py', 'cs', 'html', 'css', 'json', 'xml', 'log', 'txt', 'md'].includes(ext)) return 'sourceFile';
+    return 'file';
   }
 
   function onUserText(text, meta = {}) {
-    if (hiddenByTheme || !String(text || '').trim()) return;
-    noteInteraction();
-    const rate = rateLevel(userBurst, 'outgoing');
-    if (isSleeping()) {
-      wakeFromSleep('message');
-      if (rate) speakRate(rate);
-      return;
-    }
-    if (activity === 'cooking') {
-      speak('cook', { mood: 'annoyed', hold: 10000 });
-      if (rate === 'high') speakRate(rate);
-      interruptionUntil = Date.now() + 6500;
-      return;
-    }
-    if (rate) { speakRate(rate); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    if (repeatedText(text)) {
-      speak('repeated');
-      return;
-    }
-    if (meta.isReply) {
-      const pool = Math.random() < 0.35 ? BANKS.reply : BANKS.generic;
-      speak(pool, { mood: 'annoyed' });
-      return;
-    }
-    const kind = textCategory(text);
-    if (kind === 'oneSymbol' || kind === 'tiny') {
-      const normalizedText = String(text).trim();
-      const count = typeof Intl.Segmenter === 'function'
-        ? Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(normalizedText)).length
-        : Array.from(normalizedText).length;
-      const unit = count === 1 ? 'символ' : count >= 2 && count <= 4 ? 'символа' : 'символов';
-      const lines = kind === 'oneSymbol' ? [
-        `Всего один ${unit}. Я успела заметить его, пока остывал чай.`,
-        `Одно сообщение, ${count} ${unit}. Мы общаемся или тестируем клавиатуру?`,
-        `В нём ${count} ${unit}. Контекст, правда, всё ещё не приехал.`,
-      ] : [
-        `${count} ${unit}. Прогресс есть, смысл пока в пути.`,
-        `Я насчитала ${count} ${unit}. Даже не знаю, что сказать. Это уже достижение.`,
-        `${count} ${unit} — и ни одного лишнего. Почти образцово.`,
-      ];
-      speak(lines, { mood: 'dry' });
-      return;
-    }
-    if (kind === 'command' || kind === 'help' || kind === 'roll') {
-      speak(kind, { mood: kind === 'roll' ? 'dry' : 'annoyed' });
-      return;
-    }
-    speak(kind, { mood: ['code', 'formatCombo', 'formatted'].includes(kind) ? 'dry' : 'annoyed' });
+    const clean = String(text || '').trim();
+    if (clean) react(messageKind(clean), meta.isReply ? 'reply' : textCategory(clean));
   }
 
-  function onUserImage(file) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    const rate = rateLevel(userBurst, 'outgoing');
-    if (isSleeping()) { wakeFromSleep('message'); if (rate) speakRate(rate); return; }
-    if (activity === 'cooking') { speak('cook'); if (rate === 'high') speakRate(rate); return; }
-    if (rate) { speakRate(rate); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    const name = String(file?.name || file?.type || '').toLowerCase();
-    const typeLines = name.includes('gif') ? ['Гифка. Движение есть, смысла пока не обнаружила.', 'Анимация в картинке. Хоть кто-то здесь шевелится.']
-      : name.includes('png') ? ['PNG. Прозрачность есть, а вот тишины нет.', 'Картинка без потерь. Моё терпение всё ещё с потерями.']
-        : ['image'];
-    speak(typeLines, { mood: 'dry' });
+  function onIncomingMessage(data) {
+    if (data.image) react('ordinary', 'incomingImage');
+    else if (data.attachment) react('ordinary', fileBank(data.attachment));
+    else onUserText(data.text, { isReply: Boolean(data.replyTo) });
   }
 
-  function onUserFile(file) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    const rate = rateLevel(userBurst, 'outgoing');
-    if (isSleeping()) { wakeFromSleep('message'); if (rate) speakRate(rate); return; }
-    if (activity === 'cooking') { speak('cook'); if (rate === 'high') speakRate(rate); return; }
-    if (rate) { speakRate(rate); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    const name = String(file?.name || '').toLowerCase();
-    const ext = name.split('.').pop();
-    if (ext === 'pdf') speak('pdf');
-    else if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) speak('office');
-    else if (['xls', 'xlsx', 'csv'].includes(ext)) speak('spreadsheet');
-    else if (['zip', 'rar', '7z', 'gz', 'tar'].includes(ext)) speak('archive');
-    else if (['js', 'ts', 'py', 'cs', 'cpp', 'c', 'java', 'html', 'css', 'json', 'xml', 'yaml', 'yml', 'sql', 'sh', 'ps1', 'log', 'txt', 'md', 'markdown'].includes(ext)) speak('sourceFile');
-    else speak('file');
-  }
-
-  function onCommand(commandLine, result = {}) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    const rate = rateLevel(userBurst, 'outgoing');
-    if (isSleeping()) { wakeFromSleep('message'); if (rate) speakRate(rate); return; }
-    if (activity === 'cooking') { speak('cook'); if (rate === 'high') speakRate(rate); return; }
-    if (rate) { speakRate(rate); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    const raw = String(commandLine || '').trim();
-    const cmd = raw.replace(/^\//, '').split(/\s+/)[0].toLowerCase();
-    const commandBanks = {
-      flip: 'commandFlip', coin: 'commandFlip', монетка: 'commandFlip',
-      random: 'commandRandom', rand: 'commandRandom', rnd: 'commandRandom',
-      choose: 'commandChoose', pick: 'commandChoose', выбери: 'commandChoose',
-      '8ball': 'commandEightBall', ball: 'commandEightBall', шар: 'commandEightBall',
-      me: 'commandMe', action: 'commandMe', shrug: 'commandShrug',
-      tableflip: 'commandTableflip', flip_table: 'commandTableflip', unflip: 'commandUnflip',
-      time: 'commandTime', время: 'commandTime', now: 'commandTime',
-      uuid: 'commandUuid', guid: 'commandUuid', len: 'commandLen', length: 'commandLen', strlen: 'commandLen',
-      reverse: 'commandReverse', rev: 'commandReverse', upper: 'commandUpper', lower: 'commandLower',
-      format: 'commandFormat', fmt: 'commandFormat', разметка: 'commandFormat',
-      rps: 'commandRps', кнб: 'commandRps', calc: 'commandCalc', math: 'commandCalc', посчитай: 'commandCalc',
-      mock: 'commandMock', spongebob: 'commandMock', clap: 'commandClap',
-      whoami: 'commandWhoami', я: 'commandWhoami', echo: 'commandEcho', say: 'commandEcho',
-      binary: 'commandBinary', bin: 'commandBinary', coinflip: 'commandCoinflip', cf: 'commandCoinflip',
-      ping: 'commandPing', offline: 'commandOffline', away: 'commandOffline', afk: 'commandOffline', оффлайн: 'commandOffline',
-      online: 'commandOnline', back: 'commandOnline', онлайн: 'commandOnline'
-    };
-    if (cmd === 'help' || cmd === 'commands' || cmd === 'cmds' || cmd === 'помощь') speak('help');
-    else if (cmd === 'roll' || cmd === 'dice' || cmd === 'd' || cmd === 'кубик') speak('roll');
-    else speak(commandBanks[cmd] || 'command');
-    if (result.ok === false) setMood('smug');
-  }
-
-  function onSearch(query, result = null) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    if (isSleeping()) { wakeFromSleep('message'); return; }
-    if (activity === 'cooking') { speak('cook'); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    const q = String(query || '').trim();
-    if (result && typeof result.found === 'number') {
-      if (result.found === 0) speak(['Ничего не нашлось. Даже история чата решила не сотрудничать.', 'Ноль результатов. Впервые поиск оказался на моей стороне.']);
-      else speak([`Нашёл ${result.found} результатов. Неплохо для цифровых раскопок.`, `Поиск выдал ${result.found}. Ты точно помнишь, что именно ищешь?`]);
-      return;
-    }
-    if (!q) speak('search');
-    else speak(['Запрос принят. Надеюсь, ты ищешь что-то полезнее причин остаться в этом чате.', 'Поиск по истории. Сейчас узнаем, кто из вас первым начал.', 'Так, ищем «' + q.slice(0, 36) + '». Я не буду спрашивать, почему.']);
-  }
-
-  function onReplyStarted(target) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    if (interruptWithLifeContext()) return;
-    const name = target?.name || 'собеседнику';
-    const short = String(target?.text || '').slice(0, 46);
-    const pools = [
-      `Отвечаешь ${name}. Надеюсь, вы оба помните, с чего всё началось.`,
-      `Цитата «${short}». О, началась вторая серия.`,
-      'Выбрано сообщение для ответа. Контекст торжественно спасён.',
-      'Ответ на конкретное сообщение. Маленькая победа над хаосом.',
-      'Ты нажал «Ответить». Я бы тоже ответила, но меня никто не спрашивал.'
-    ];
-    speak(pools, { mood: 'dry' });
-  }
-
-  function onEditStarted(target) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    if (isSleeping()) { wakeFromSleep('message'); return; }
-    if (activity === 'cooking') { speak('cook'); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    speak(['Редактирование. Дай угадаю: первая версия была слишком честной.', 'Сейчас будет косметика для истории. Надеюсь, помогает.', `Ты исправляешь сообщение «${String(target?.text || '').slice(0, 36)}». Удачи прошлому тебе.`, ...BANKS.edit], { mood: 'dry' });
-  }
-
-  function onIncomingMessage(data = {}) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    const rate = rateLevel(incomingBurst, 'incoming');
-    if (isSleeping()) { wakeFromSleep('incoming'); if (rate) speakRate(rate); return; }
-    if (rate) { speakRate(rate); return; }
-    if (activity === 'cooking') { speak('cook'); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    if (data.replyTo) speak('incomingReply');
-    else if (data.image) speak('incomingImage');
-    else if (data.attachment) {
-      const ext = String(data.attachment.name || '').split('.').pop().toLowerCase();
-      if (ext === 'pdf') speak('pdf');
-      else if (['doc', 'docx', 'odt', 'rtf'].includes(ext)) speak('office');
-      else if (['xls', 'xlsx', 'csv'].includes(ext)) speak('spreadsheet');
-      else if (['zip', 'rar', '7z', 'gz', 'tar'].includes(ext)) speak('archive');
-      else if (['md', 'markdown', 'js', 'ts', 'py', 'json', 'xml', 'yaml'].includes(ext)) speak('sourceFile');
-      else speak('incomingFile');
-    } else if (data.text) {
-      const kind = textCategory(data.text);
-      if (kind === 'code') speak('incomingCode');
-      else if (kind === 'formatCombo' || kind === 'formatted') speak('incomingFormatted');
-      else if (kind === 'command' || kind === 'help' || kind === 'roll') speak(['Собеседник вызвал команду. У вас теперь даже лень автоматизирована.', 'На той стороне слэш-команда. Синтаксис вместо разговора — знакомо.', 'Команда от собеседника. Надеюсь, хоть результат будет полезный.']);
-      else if (kind === 'questions') speak('incomingQuestion');
-      else if (kind === 'greeting') speak('incomingGreeting');
-      else if (kind === 'long') speak('incomingLong');
-      else if (kind === 'short' || kind === 'tiny' || kind === 'oneSymbol') speak('incomingShort');
-      else speak('incoming');
-    } else speak('incoming');
-  }
-
-  function onIncomingEdit(data = {}) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    if (isSleeping()) { wakeFromSleep('incoming'); return; }
-    if (activity === 'cooking') { speak('cook'); return; }
-    if (activity === 'reading' || activity === 'snack') { interruptWithLifeContext(); return; }
-    speak('incomingEdit', { mood: 'dry' });
-  }
-
-  function onEditSaved() {
-    if (hiddenByTheme) return;
-    speak(['Изменение сохранено. История слегка подправлена, а не переписана.', 'Готово. Надеюсь, теперь фраза хотя бы не попросит второй редакторский проход.', 'Сообщение исправлено. Мелкий ремонт текста завершён.'], { mood: 'dry' });
-  }
-
-  function onAway(away) {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    if (away) {
-      if (isSleeping()) return;
-      speak(['О, тишина. Я воспользуюсь моментом, пока он не передумал.', 'Ты ушёл? Прекрасно. У меня как раз чай и личная жизнь.', 'Наконец-то можно закончить дела без звукового сопровождения.'], { mood: 'neutral' });
-    } else {
-      if (isSleeping()) { wakeFromSleep('incoming'); return; }
-      speak('returnFromAway');
-    }
-  }
-
-  function onLogin() {
-    if (hiddenByTheme) return;
-    noteInteraction();
-    if (isSleeping()) {
-      setActivity('sleeping');
-      speak(['Я сплю. Это не приветствие, это предупреждение.', 'Ночной визит? У меня тут подушка и планы не просыпаться.'], { mood: 'sleepy', hold: 12000 });
-    } else {
-      speak('greet', { mood: 'annoyed' });
-    }
-  }
-
-  function touchActivity() {
-    // Backward-compatible method used by app.js; the house routine runs independently.
-    if (!hiddenByTheme && !routineTimer) planActivity();
-  }
-
-  function syncThemeVisibility() {
-    let animation = document.documentElement.dataset.backgroundAnimation;
-    if (!animation) {
-      try { animation = JSON.parse(localStorage.getItem('chat_appearance_v1') || '{}').animation; }
-      catch { animation = ''; }
-    }
-    const enabled = animation === 'hater';
-    hiddenByTheme = !enabled;
+  function syncTheme() {
+    const active = document.documentElement.dataset.backgroundAnimation === 'hater';
+    if (active === enabled) return;
+    enabled = active;
     root.classList.toggle('hidden', !enabled);
-    root.setAttribute('aria-hidden', enabled ? 'false' : 'true');
-    if (enabled && !routineTimer) planActivity();
-    if (!enabled) {
-      clearTimeout(routineTimer);
-      clearTimeout(wakeTimer);
-      routineTimer = 0;
+    root.setAttribute('aria-hidden', String(!enabled));
+    if (enabled) {
+      temper = createHaterTemper();
+      nextPost = Date.now() + 75_000;
+      setActivity(getClockState().sleeping ? 'sleeping' : 'reading', true);
+    } else {
+      [routineTimer, walkTimer, speechTimer, gestureTimer].forEach(clearTimeout);
+      speech.textContent = '';
+      delete root.dataset.gesture;
+      delete root.dataset.mood;
+      messages.querySelectorAll('.hater-chat-message').forEach(node => node.remove());
     }
   }
 
-  root.addEventListener('click', event => {
-    if (!event.target.closest('.hater-interactive')) return;
-    if (isSleeping()) speak(['Не тыкай. Я сплю.', 'У кресла есть кнопка? Нет. Не нажимай на меня.'], { mood: 'sleepy' });
-    else if (activity === 'cooking') speak('cook');
-    else speak(['Что? Я занята телефоном.', 'Это не кнопка вызова персонала.', 'Да, я здесь. К сожалению, ты тоже.'], { mood: 'annoyed' });
-  });
-
+  button.addEventListener('click', () => react('poke', 'generic'));
   document.addEventListener('hater:incoming-message', event => onIncomingMessage(event.detail || {}));
-  document.addEventListener('hater:incoming-edit', event => onIncomingEdit(event.detail || {}));
-  window.addEventListener('appearance:change', syncThemeVisibility);
+  document.addEventListener('hater:incoming-edit', () => react('ordinary', 'incomingEdit'));
+  window.addEventListener('appearance:change', syncTheme);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) setTimeOfDay();
+    if (enabled && !document.hidden) root.dataset.time = getClockState().period;
   });
-
-  setActivity(getClockState().sleeping ? 'sleeping' : 'phone');
-  syncThemeVisibility();
+  syncTheme();
 
   return {
-    say,
     onUserText,
-    onUserImage,
-    onUserFile,
-    onCommand,
-    onSearch,
-    onReplyStarted,
-    onEditStarted,
-    onIncomingMessage,
-    onIncomingEdit,
-    onEditSaved,
-    onAway,
-    onLogin,
-    touchActivity,
-    setActivity,
+    onUserImage: () => react('ordinary', 'image'),
+    onUserFile: file => react('ordinary', fileBank(file)),
+    onCommand: text => onUserText(text),
+    onAway: away => {
+      if (enabled && away && activity !== 'sleeping' && activity !== 'smoking') {
+        say('О, тишина. Я воспользуюсь моментом, пока он не передумал.');
+      }
+    },
   };
 }
