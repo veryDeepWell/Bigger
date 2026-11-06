@@ -28,6 +28,24 @@ const offlineBtn = document.getElementById('offlineBtn');
 const messageInput = document.getElementById('messageInput');
 const sendBtn = document.getElementById('sendBtn');
 const fileInput = document.getElementById('fileInput');
+
+// Safari меняет видимую область при открытии клавиатуры, не меняя высоту CSS viewport.
+const visibleViewport = window.visualViewport;
+if (visibleViewport && matchMedia('(pointer: coarse)').matches) {
+  const syncViewport = () => {
+    const style = document.documentElement.style;
+    if (visibleViewport.scale === 1) {
+      style.setProperty('--visible-height', `${visibleViewport.height}px`);
+      style.setProperty('--visible-top', `${visibleViewport.offsetTop}px`);
+    } else {
+      style.removeProperty('--visible-height');
+      style.removeProperty('--visible-top');
+    }
+  };
+  visibleViewport.addEventListener('resize', syncViewport);
+  visibleViewport.addEventListener('scroll', syncViewport);
+  syncViewport();
+}
 const attachBtn = document.getElementById('attachBtn');
 
 let unsubscribeMessages = null;

@@ -393,12 +393,12 @@ h1 {
   }
   
   /* Находим сообщение, внутри которого есть картинка, и уменьшаем его padding */
-  .message:has(img) {
+  .message.message-with-image {
     padding: 4px; /* Минимальный отступ вокруг картинки */
   }
   
   /* Оставляем небольшой отступ для имени отправителя */
-  .message:has(img) .sender {
+  .message-with-image .sender {
     padding: 4px 8px 0 8px;
   }
 }
@@ -424,28 +424,31 @@ h1 {
 }
 
 /* Стили для картинок в сообщениях */
-.message img {
-  max-width: 500px;
+.message-with-image > img {
+  max-width: min(500px, 100%);
   max-height: 350px;
-  width: auto;           
-  object-fit: contain;   
+  width: auto;
+  height: auto;
+  object-fit: contain;
   border-radius: 8px;
   margin-top: 5px;
   cursor: pointer;
   display: block;
 }
 
-.message:has(img) {
-  /* Если в сообщении есть картинка, делаем ширину контейнера по содержимому (картинке) */
-  width: fit-content; 
+.message.message-with-image {
+  width: fit-content;
+  max-width: min(530px, 100%);
+  min-width: 0;
 }
 
-.message:has(img) span:not(.sender):not(.msg-time):not(.msg-status) {
-  /* Текст под картинкой не должен быть шире самой картинки */
+.message-with-image > .message-text {
   display: block;
-  max-width: 100%; 
-  word-break: break-word;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
 }
+
+.message-with-image .message-meta { flex-wrap: wrap; }
 
 /* Немного поправим кнопку прикрепления */
 #attachBtn {
@@ -2313,3 +2316,76 @@ body:not(.theme-hater) .hater-house { display: none !important; }
 .code-wrap .code-line > span { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-text .code-collapsed .fmt-code-block { max-height: 25em; overflow-y: auto; }
 @media (max-width: 600px) { .search-filters label { max-width: 100%; flex: 1 1 130px; } .viewer-toolbar { gap: 5px; } }
+
+@media (max-width: 768px), (max-width: 950px) and (pointer: coarse) and (orientation: landscape) {
+  body {
+    height: 100dvh;
+    height: var(--visible-height, 100dvh);
+  }
+
+  .site-header {
+    flex: none;
+    gap: 6px;
+    padding: calc(6px + env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+      6px max(8px, env(safe-area-inset-left));
+  }
+  .logo { flex: none; width: 30px; height: 30px; }
+  .site-header h1 { font-size: .9rem; }
+  .btn-wrapper { gap: 4px; }
+  #logoutBtn, #settingsBtn, #offlineBtn {
+    margin: 0;
+    min-height: 36px;
+    padding: 4px 8px;
+    font-size: .75rem;
+  }
+
+  .main-content { flex: 1 1 0; min-height: 0; }
+  #chatScreen {
+    height: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  #loginScreen { padding-bottom: env(safe-area-inset-bottom); overflow-y: auto; }
+  .login-box { flex: none; margin-block: auto; }
+  .chat-header { flex: none; padding: 6px 10px; gap: 6px; }
+  .chat-header-actions .commands-toggle-btn { min-height: 36px; padding-inline: 8px; }
+  #messages { flex: 1 1 0; min-height: 0; padding: 10px; gap: 10px; overscroll-behavior: contain; }
+  #messages .message { flex-shrink: 0; min-width: 0; max-width: 92%; overflow-wrap: anywhere; }
+  .replying-bar { flex: none; }
+  .replying-bar > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .input-area { flex: none; align-items: end; gap: 6px; padding: 6px 8px; }
+  .textarea-wrapper, .input-area textarea { min-width: 0; }
+  .input-area textarea { width: 100%; max-height: 120px; font-size: 16px; }
+  #attachBtn, #sendBtn { flex: 0 0 44px; height: 44px; }
+  #emojiBtn { width: 40px; height: 44px; right: 2px; }
+  .emoji-picker { right: 8px; max-height: min(220px, calc(var(--visible-height, 100dvh) * .48)); }
+  .commands-panel {
+    top: var(--visible-top, 0px);
+    bottom: auto;
+    height: var(--visible-height, 100dvh);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) 0;
+  }
+
+  .modal-overlay, .image-viewer {
+    top: var(--visible-top, 0px);
+    bottom: auto;
+    height: 100dvh;
+    height: var(--visible-height, 100dvh);
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+  .modal-overlay .modal-content { max-width: 100%; max-height: 100%; overflow: auto; }
+  .chat-search-form { flex-direction: row; }
+  .search-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .search-filters label, .search-filters input, .search-filters select { min-width: 0; }
+  .search-filters input:not([type=checkbox]), .search-filters select { width: 100%; font-size: 16px; }
+  .chat-search-results { flex-shrink: 0; max-height: 40dvh; }
+  .image-viewer { grid-template-columns: minmax(0, 1fr); }
+  #viewerStage { width: 100%; }
+  .viewer-prev { left: max(10px, env(safe-area-inset-left)); }
+  .viewer-next { right: max(10px, env(safe-area-inset-right)); }
+  .site-footer { display: none; }
+}

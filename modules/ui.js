@@ -210,10 +210,9 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
     messageEl.appendChild(quote);
   }
 
-  let imgElement = null;
-  let textSpan = null;
   if (imageBase64) {
-    imgElement = document.createElement('img');
+    messageEl.classList.add('message-with-image');
+    const imgElement = document.createElement('img');
     imgElement.src = imageBase64;
     imgElement.dataset.caption = text || '';
     imgElement.alt = text ? 'Изображение: ' + text : 'Изображение';
@@ -227,13 +226,9 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
     messageEl.appendChild(createAttachmentElement(attachment));
   }
   if (text) {
-    textSpan = document.createElement('span');
+    const textSpan = document.createElement('span');
     textSpan.className = 'message-text';
     appendTextWithLinks(textSpan, text);
-    if (imageBase64) {
-      textSpan.style.display = 'block';
-      textSpan.style.marginTop = '8px';
-    }
     messageEl.appendChild(textSpan);
   }
 
@@ -270,21 +265,6 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
   } else {
     messagesDiv.appendChild(messageEl);
     if (wasNearBottom && canFollowMessages()) messagesDiv.scrollTop = messagesDiv.scrollHeight;
-  }
-
-  if (imgElement) {
-    imgElement.onload = () => {
-      let width = imgElement.offsetWidth;
-      if (width < 250) {
-        width = 250;
-        imgElement.style.margin = 'auto';
-      }
-      if (textSpan) textSpan.style.maxWidth = width + 'px';
-      metaDiv.style.maxWidth = width + 'px';
-      metaDiv.style.width = width + 'px';
-      messageEl.style.width = 'fit-content';
-      messageEl.style.maxWidth = '100%';
-    };
   }
 }
 
