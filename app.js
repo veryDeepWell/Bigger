@@ -1,5 +1,5 @@
 import { initAuth, loginUser, logoutUser } from './modules/auth.js';
-import { listenForMessages, sendTextMessage, updateTextMessage, searchMessages, jumpToMessage } from './modules/chat.js';
+import { listenForMessages, sendTextMessage, sendYukaMessage, updateTextMessage, searchMessages, jumpToMessage } from './modules/chat.js';
 import { sendImage } from './modules/images.js';
 import { sendAttachment } from './modules/attachments.js';
 import { messagesRef } from './modules/firebase.js';
@@ -760,7 +760,7 @@ initImageViewer();
 listenTypingStatus();
 initAppearance();
 initBackgroundAnimation();
-hater = initHater();
+hater = initHater(sendYukaMessage);
 initAuth(showChat, showLogin);
 
 initCommandsPanel({

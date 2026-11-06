@@ -1,5 +1,4 @@
 import { createHaterTemper } from './haterTemper.js';
-import { canFollowMessages } from './reading.js';
 
 const BANKS = {
   greet: [
@@ -881,7 +880,7 @@ function messageKind(text) {
   return 'ordinary';
 }
 
-export function initHater() {
+export function initHater(sendMessage) {
   const root = document.getElementById('haterRoot');
   if (!root) return null;
   const resident = root.querySelector('.hater-resident');
@@ -889,7 +888,6 @@ export function initHater() {
   const speech = root.querySelector('.hater-dialogue-stack');
   const prop = root.querySelector('.hater-prop');
   const button = root.querySelector('.hater-interactive');
-  const messages = document.getElementById('messages');
   const chat = document.getElementById('chatScreen');
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const recent = new Map();
@@ -900,6 +898,7 @@ export function initHater() {
   let position = POSITIONS.chair;
   let routineTimer, walkTimer, speechTimer, gestureTimer;
   let lastPost = 0;
+  let posting = false;
   let nextPost = 0;
   let lastSmallTalk = 0;
 
@@ -916,25 +915,17 @@ export function initHater() {
     }, mood === 'angry' ? 11_000 : 8_000);
   }
 
-  function post(line, urgent = false) {
+  async function post(line, urgent = false) {
     const now = Date.now();
-    if (!enabled || document.hidden || chat.classList.contains('hidden')
+    if (!enabled || posting || document.hidden || chat.classList.contains('hidden')
         || document.body.classList.contains('away-mode') || now - lastPost < (urgent ? 20_000 : 95_000)) return;
     lastPost = now;
-    const follow = canFollowMessages() && messages.scrollHeight - messages.scrollTop - messages.clientHeight < 100;
-    const row = document.createElement('div');
-    row.className = 'hater-chat-message';
-    const sender = document.createElement('strong');
-    sender.textContent = 'Юка';
-    const label = document.createElement('small');
-    label.textContent = 'локально';
-    const text = document.createElement('div');
-    text.textContent = line;
-    row.append(sender, label, text);
-    messages.append(row);
-    const posts = messages.querySelectorAll('.hater-chat-message');
-    if (posts.length > 16) posts[0].remove();
-    if (follow) messages.scrollTop = messages.scrollHeight;
+    posting = true;
+    try {
+      await sendMessage(line);
+    } finally {
+      posting = false;
+    }
   }
 
   function schedule(delay) {
@@ -1070,6 +1061,10 @@ export function initHater() {
   }
 
   function onIncomingMessage(data) {
+    if (data.fromYuka) {
+      lastPost = Date.now();
+      return;
+    }
     if (data.image) react('ordinary', 'incomingImage');
     else if (data.attachment) react('ordinary', fileBank(data.attachment));
     else onUserText(data.text, { isReply: Boolean(data.replyTo) });
@@ -1090,7 +1085,6 @@ export function initHater() {
       speech.textContent = '';
       delete root.dataset.gesture;
       delete root.dataset.mood;
-      messages.querySelectorAll('.hater-chat-message').forEach(node => node.remove());
     }
   }
 

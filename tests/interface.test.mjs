@@ -19,7 +19,9 @@ assert(!matchesSearch(sample, '', { type: 'image' }));
 // Проверяем, что фильтры проходят через настоящий поиск и работают за первой страницей.
 const records = Array.from({ length: 95 }, (_, i) => ({ key: String(i).padStart(4, '0'), val: () => i === 2 ? sample : { name: 'Друг', text: 'обычное сообщение' } }));
 const dummy = () => {};
-const backend = { push: dummy, onChildAdded: dummy, onChildChanged: dummy, onChildRemoved: dummy, serverTimestamp: dummy, ref: dummy, update: dummy, onValue: dummy,
+const sent = [];
+const messagesRef = {};
+const backend = { push: async (ref, payload) => sent.push({ ref, payload }), onChildAdded: dummy, onChildChanged: dummy, onChildRemoved: dummy, serverTimestamp: () => 123, ref: dummy, update: dummy, onValue: dummy,
   query: (_, ...parts) => parts, orderByKey: () => ({}), endAt: key => ({ end: key }), limitToLast: limit => ({ limit }),
   get: async parts => { const end = parts.find(p => p.end)?.end; const limit = parts.find(p => p.limit).limit; const page = records.filter(r => !end || r.key <= end).slice(-limit); return { forEach: fn => page.forEach(fn) }; }
 };
@@ -28,13 +30,37 @@ const chat = new vm.SourceTextModule(await source('modules/chat.js'));
 await chat.link(specifier => {
   if (specifier.endsWith('searchFilters.js')) return filter;
   if (specifier.endsWith('reading.js')) return synthetic({ startReading: dummy, restoreReading: dummy, stopReading: dummy });
-  if (specifier.endsWith('firebase.js')) return synthetic({ db: {}, messagesRef: {} });
+  if (specifier.endsWith('firebase.js')) return synthetic({ db: {}, messagesRef });
   if (specifier.startsWith('https:')) return synthetic(backend);
-  if (specifier.endsWith('ui.js')) return synthetic({ displayMessage: dummy, updateMessageStatus: dummy });
+  if (specifier.endsWith('ui.js')) return synthetic({ displayMessage: dummy, updateMessageStatus: dummy, YUKA_NAME: 'Юка' });
   if (specifier.endsWith('notifications.js')) return synthetic({ showNotification: dummy });
   throw Error(specifier);
 });
 await chat.evaluate();
+const originalStorage = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+const originalDocument = Object.getOwnPropertyDescriptor(globalThis, 'document');
+const theme = { backgroundAnimation: 'hater' };
+let chatUser = null;
+Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: { getItem: () => chatUser } });
+Object.defineProperty(globalThis, 'document', { configurable: true, value: { documentElement: { dataset: theme } } });
+try {
+  assert.equal(await chat.namespace.sendYukaMessage('Тест'), false);
+  chatUser = 'Макс';
+  assert.equal(await chat.namespace.sendYukaMessage('  Идите траву потрогайте.  '), true);
+  theme.backgroundAnimation = 'dots';
+  assert.equal(await chat.namespace.sendYukaMessage('После смены темы'), false);
+  const replyTo = { id: '0002', name: 'Друг', text: 'Отчёт' };
+  assert.equal(await chat.namespace.sendTextMessage('Ответ', replyTo), true);
+  assert.deepEqual(sent, [
+    { ref: messagesRef, payload: { name: 'Юка', text: 'Идите траву потрогайте.', read: false, timestamp: 123 } },
+    { ref: messagesRef, payload: { name: 'Макс', text: 'Ответ', read: false, timestamp: 123, replyTo } }
+  ]);
+} finally {
+  if (originalStorage) Object.defineProperty(globalThis, 'localStorage', originalStorage);
+  else delete globalThis.localStorage;
+  if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument);
+  else delete globalThis.document;
+}
 const results = await chat.namespace.searchMessages('', { filters: { author: 'Макс', type: 'pdf', from: '2026-10-26', to: '2026-11-01' } });
 assert.equal(results.length, 1); assert.equal(results[0].id, '0002');
 assert.equal((await chat.namespace.searchMessages('', { filters: {} })).length, 0);

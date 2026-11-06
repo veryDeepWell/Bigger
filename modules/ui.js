@@ -2,6 +2,8 @@ import { canFollowMessages } from './reading.js';
 import { renderFormattedText } from './format.js';
 import { createAttachmentElement } from './attachments.js';
 
+export const YUKA_NAME = 'Юка';
+
 function appendTextWithLinks(container, text) {
   renderFormattedText(container, text);
 }
@@ -35,6 +37,8 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
 
   const isMine = name === currentUser;
   if (isMine) messageEl.classList.add('my-message');
+  const isYuka = name === YUKA_NAME;
+  if (isYuka) messageEl.classList.add('hater-chat-message');
 
   // Меню действий в углу сообщения.
   const actionsWrapper = document.createElement('div');
@@ -172,6 +176,12 @@ export function displayMessage(name, text, imageBase64, currentUser, isRead, mes
   const senderSpan = document.createElement('span');
   senderSpan.className = 'sender';
   senderSpan.textContent = name;
+  if (isYuka) {
+    const badge = document.createElement('small');
+    badge.className = 'hater-chat-badge';
+    badge.textContent = 'Хейтерша';
+    senderSpan.append(badge);
+  }
   messageEl.appendChild(senderSpan);
 
   if (replyTo) {

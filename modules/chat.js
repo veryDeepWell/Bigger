@@ -5,7 +5,7 @@ import {
   push, onChildAdded, onChildChanged, onChildRemoved, serverTimestamp,
   query, orderByKey, limitToLast, endAt, get, ref, update, onValue
 } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
-import { displayMessage, updateMessageStatus } from './ui.js';
+import { displayMessage, updateMessageStatus, YUKA_NAME } from './ui.js';
 import { showNotification } from './notifications.js';
 
 const PAGE_SIZE = 20;
@@ -69,7 +69,7 @@ function renderChangedSnapshot(snapshot) {
   const nextContent = { name: data.name || '', text: data.text || '', image: Boolean(data.image), attachmentName: data.attachment?.name || '', edited: Boolean(data.edited) };
   const contentChanged = previous && (previous.text !== nextContent.text || previous.image !== nextContent.image || previous.attachmentName !== nextContent.attachmentName);
   knownMessageContent.set(snapshot.key, nextContent);
-  if (contentChanged && data.name !== activeUser && data.edited) {
+  if (contentChanged && data.name !== activeUser && data.name !== YUKA_NAME && data.edited) {
     document.dispatchEvent(new CustomEvent('hater:incoming-edit', { detail: { name: data.name || '', text: data.text || '' } }));
   }
   displayMessage(
@@ -82,10 +82,10 @@ function renderChangedSnapshot(snapshot) {
 }
 
 function notifyLocalHater(data) {
-  // Клиентское событие для локального NPC. Не пишет ничего в Firebase.
   document.dispatchEvent(new CustomEvent('hater:incoming-message', {
     detail: {
       name: data?.name || '',
+      fromYuka: data?.name === YUKA_NAME,
       text: data?.text || '',
       image: Boolean(data?.image),
       attachment: data?.attachment ? { name: data.attachment.name || '', type: data.attachment.type || '' } : null,
@@ -351,20 +351,32 @@ export async function jumpToMessage(messageId) {
   return true;
 }
 
+async function pushTextMessage(name, text, replyTo) {
+  const payload = { name, text, read: false, timestamp: serverTimestamp() };
+  if (replyTo) payload.replyTo = replyTo;
+  await push(messagesRef, payload);
+}
+
+export async function sendYukaMessage(text) {
+  const cleanText = text.trim();
+  if (!cleanText || document.documentElement.dataset.backgroundAnimation !== 'hater'
+      || !localStorage.getItem('chat_user_name')) return false;
+  try {
+    await pushTextMessage(YUKA_NAME, cleanText);
+    return true;
+  } catch (error) {
+    console.error('Не удалось отправить реплику Юки:', error);
+    return false;
+  }
+}
+
 export async function sendTextMessage(text, replyTo = null) {
   const currentUser = localStorage.getItem('chat_user_name');
   const cleanText = (text || '').trim();
   if (!cleanText || !currentUser) return false;
 
   try {
-    const payload = {
-      name: currentUser,
-      text: cleanText,
-      read: false,
-      timestamp: serverTimestamp()
-    };
-    if (replyTo) payload.replyTo = replyTo;
-    await push(messagesRef, payload);
+    await pushTextMessage(currentUser, cleanText, replyTo);
     return true;
   } catch (error) {
     console.error('Ошибка отправки:', error);
