@@ -2115,6 +2115,8 @@ html[data-chat-background="plain"] #messages {
 
 @media (max-width: 768px), (max-width: 950px) and (pointer: coarse) and (orientation: landscape) {
   body {
+    position: fixed;
+    inset: var(--visible-top, 0px) 0 auto;
     height: 100dvh;
     height: var(--visible-height, 100dvh);
   }

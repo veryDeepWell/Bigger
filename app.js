@@ -64,7 +64,7 @@ function showChat() {
   chatScreen.classList.remove('hidden');
   logoutBtn.classList.remove('hidden');
   offlineBtn?.classList.remove('hidden');
-  messageInput.focus();
+  messageInput.focus({ preventScroll: true });
 
   requestNotificationPermission();
   initPresence();
@@ -225,7 +225,7 @@ function insertIntoMessageInput(value) {
   messageInput.value = current.slice(0, start) + value + current.slice(end);
   const caret = start + value.length;
   emojiInsertStart = emojiInsertEnd = caret;
-  messageInput.focus();
+  messageInput.focus({ preventScroll: true });
   messageInput.setSelectionRange(caret, caret);
   messageInput.dispatchEvent(new Event('input', { bubbles: true }));
 }
@@ -327,7 +327,7 @@ document.addEventListener('chat:reply', (event) => {
   replyTarget = event.detail;
   document.getElementById('replyingText').textContent = `Ответ на ${replyTarget.name}: ${(replyTarget.text || (replyTarget.attachment?.name ? `📎 ${replyTarget.attachment.name}` : (replyTarget.image ? '📷 Изображение' : ''))).slice(0, 100)}`;
   document.getElementById('replyingBar').classList.remove('hidden');
-  messageInput.focus();
+  messageInput.focus({ preventScroll: true });
   autoResizeTextarea();
 });
 
@@ -347,7 +347,7 @@ document.addEventListener('chat:edit', (event) => {
   messageInput.placeholder = 'Измени сообщение...';
   sendBtn.textContent = '✓';
   attachBtn.disabled = true;
-  messageInput.focus();
+  messageInput.focus({ preventScroll: true });
   autoResizeTextarea();
 });
 
@@ -665,7 +665,7 @@ document.addEventListener('keydown', (e) => {
   if (chatScreen.classList.contains('hidden')) return;
   const active = document.activeElement;
   if (active === messageInput || active?.matches('input, textarea, select, button, [contenteditable="true"]')) return;
-  messageInput.focus();
+  messageInput.focus({ preventScroll: true });
 });
 
 // ==========================================
@@ -766,7 +766,7 @@ initAuth(showChat, showLogin);
 initCommandsPanel({
   onInsert: (snippet) => {
     messageInput.value = snippet;
-    messageInput.focus();
+    messageInput.focus({ preventScroll: true });
     autoResizeTextarea();
     const len = messageInput.value.length;
     messageInput.setSelectionRange(len, len);
